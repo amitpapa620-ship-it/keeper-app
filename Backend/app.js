@@ -14,7 +14,7 @@ const saltRounds = 10;
 
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT ||3000;
 
 
 app.set("view engine", "ejs");
@@ -29,7 +29,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-mongoose.connect("mongodb://localhost:27017/userDB");
+mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/userDB");
 // mongoose.set("useCreateIndex", true); // this for older version now it get removed.
 
 
@@ -135,7 +135,7 @@ app.post("/addNote", async (req, res) => {
             content,
             reminder,
             userId: req.session.userId,
-            labels: labelIds || [] // notes can store multiple labels
+            labels: labelIds || [] 
        });
         await note.save();
         res.status(201).send("Note added");
@@ -249,38 +249,7 @@ app.post("/updateLabel", async (req, res) => {
 app.post("/register", async (req, res) => {
     
     try {
-        // const {username, password } = req.body;
-        // bcrypt.hash(password, saltRounds, async (err, hash) => {
-
-        //     if (!username|| !password) {
-        //     console.log("Fields are empty");
-        //     return res.redirect("/register");
-        //     }
         
-        //     const newUser = new User({
-        //         email: username,
-        //         password: hash
-        //     });
-
-        //     // No callback here! Just await the promise.
-        //     await newUser.save(); 
-        //     req.session.userId = newUser._id;
-        //     res.redirect("/secrets");
-        // });
-        
-        // User.register({ username: req.body.username }, req.body.password, (err, user) => {
-        //     if (err) {
-        //         console.error("Error during registration:", err);
-        //         return res.redirect("/register");
-        //     }
-        //     passport.authenticate("local")(req, res, () => {
-        //         req.session.userId = user._id;
-                
-        //         req.session.save(() => {
-        //             res.redirect("/secrets");
-        //         });
-        //     });
-        // });
 
         const user = await User.register(
             { username: req.body.username },
@@ -311,33 +280,10 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", async (req, res) => {
     
-    // const username = req.body.username;
-    // const password = req.body.password;
-
-    //     if (!username || !password) {
-    //         console.log("Login fields are empty");
-    //         return res.redirect("/login");
-    //     }
+   
 
     try {
-        // const foundUser = await User.findOne({ email: username });
-
-        // if (foundUser) {
-        //     bcrypt.compare(password, foundUser.password, (err, result) => {
-        //         if (err) {
-        //             console.error("Error comparing passwords:", err);
-        //             return res.status(500).send("Server Error");
-        //         }
-        //         if (result) {
-        //             req.session.userId = foundUser._id;
-        //             res.redirect("/secrets");
-        //         } else {
-        //             res.send("Password incorrect.");
-        //         }
-        //     });
-        // } else {
-        //     res.send("User not found.");
-        // }
+        
 
 
         const user = new User({
