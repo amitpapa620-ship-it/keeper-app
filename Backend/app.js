@@ -293,21 +293,19 @@ app.post("/login", async (req, res) => {
         
 
 
-        const user = new User({
-            username: req.body.username,
-            password: req.body.password
-        });
+       passport.authenticate("local", (err, user, info) => {
+        if (err) return next(err);
+        if (!user) return res.redirect("/login");
 
         req.login(user, (err) => {
-            if (err) {
-                console.error("Error during login:", err);
-                return res.status(500).send("Server Error");
-            }
-            passport.authenticate("local")(req, res, () => {
-                req.session.userId = user._id;
+            if (err) return next(err);
+
+            req.session.userId = user._id; // ✅ real DB user ID
+            req.session.save(() => {
                 res.redirect("/secrets");
             });
-        }); 
+        });
+    })(req, res, next);
 
 
     } catch (err) {
