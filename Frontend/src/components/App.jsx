@@ -72,14 +72,14 @@ function App() {
 
     const filteredNotes = notes.filter(note => {
     // ALL notes
-    if (active === "Notes") return true;
+    if (active.type === "Notes") return true;
 
     // reminders only
-    if (active === "Reminders") return !!note.reminder;
+    if (active.type === "Reminders") return !!note.reminder;
 
     // label filter (IMPORTANT FIX)
     if (active.type === "label") {
-        return note.labels?.some(id => id.toString() === active);
+        return note.labels?.some(id => id.toString() === active.value);
     }
 
     return true;
