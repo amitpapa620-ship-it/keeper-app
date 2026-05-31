@@ -8,6 +8,7 @@ import path from "path";
 import session from "express-session";
 import passport from "passport";
 import passportLocalMongoose from "passport-local-mongoose";
+import MongoStore from "connect-mongo";
 
 const __dirname = path.resolve();
 const saltRounds = 10;
@@ -21,9 +22,15 @@ app.set("view engine", "ejs");
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({
-  secret: "secret",
+  secret: process.env.SESSION_SECRET || "secret",
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || "mongodb://localhost:27017/userDB"
+  }),
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
+  }
 }));
 
 app.use(passport.initialize());
