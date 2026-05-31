@@ -1,0 +1,24 @@
+<%- include('partial/header') %>
+<div class="container">
+  
+        <div class="card-body">
+          <h1>Keeper App</h1>
+          <h3>Start Your journey</h3>
+          <p>Sign up to keep your thoughts safe.</p>
+          <!-- Makes POST request to /register route -->
+          <form action="/register" method="POST">
+            
+              <label for="email">Email</label>
+              <input type="email" class="form-control" name="username">
+            
+              <label for="password">Password</label>
+              <input type="password" class="form-control" name="password">
+          
+            <button type="submit" class="btn btn-dark">Register</button>
+          </form>
+
+        </div>
+   
+</div>
+
+<%- include('partial/footer') %>
