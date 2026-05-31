@@ -285,34 +285,38 @@ app.post("/register", async (req, res) => {
     }
 });
 
-app.post("/login", async (req, res) => {
+app.post("/login", async (req, res, next) => {
     
-   
+   passport.authenticate("local", (err, user, info) => {
+       if (err) {
+           console.error("Auth error:", err);
+           return next(err);
+       }
+       if (!user) {
+           console.log("No user found:", info);
+           return res.redirect("/login");
+       }
 
-    try {
+       req.login(user, (err) => {
+           if (err) {
+               console.error("Login error:", err);
+               return next(err);
+           }
+
+           req.session.userId = user._id;
+           req.session.save((err) => {
+               if (err) return next(err);
+               console.log("✅ Logged in, userId:", user._id);
+               res.redirect("/secrets");
+           });
+       });
+   })(req, res, next);
+});
+
         
 
+    
 
-       passport.authenticate("local", (err, user, info) => {
-        if (err) return next(err);
-        if (!user) return res.redirect("/login");
-
-        req.login(user, (err) => {
-            if (err) return next(err);
-
-            req.session.userId = user._id; // ✅ real DB user ID
-            req.session.save(() => {
-                res.redirect("/secrets");
-            });
-        });
-    })(req, res, next);
-
-
-    } catch (err) {
-        console.log(err);
-        res.status(500).send("Server Error");
-    }
-});
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
