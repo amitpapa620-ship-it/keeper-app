@@ -41,12 +41,23 @@ app.use(session({
 }));
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  family: 4,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
   }
 });
+
+transporter.verify()
+  .then(() => {
+    console.log("SMTP server is ready");
+  })
+  .catch((error) => {
+    console.error("SMTP connection failed:", error);
+  });
 
 function generateOtp() {
   return crypto.randomInt(100000, 1000000).toString();
