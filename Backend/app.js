@@ -42,15 +42,14 @@ app.use(session({
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
+  port: 465,
+  secure: true, // true for 465, false for other ports
   family: 4,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
   }
 });
-
 transporter.verify()
   .then(() => {
     console.log("SMTP server is ready");
