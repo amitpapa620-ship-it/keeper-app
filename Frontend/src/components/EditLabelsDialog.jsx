@@ -10,52 +10,49 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-function EditLabelsDialog({ open, handleClose, labels, setLabels }) {
+function EditLabelsDialog({ open, handleClose, labels, setLabels, refetchNotes }) {
   const [newLabel, setNewLabel] = React.useState("");
 
   
 
   // Delete label
   const deleteLabel = async (index) => {
-  const labelToDelete = labels[index];
+        const labelToDelete = labels[index];
 
-  await fetch("/deleteLabel", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      id: labelToDelete._id || index
-    })
-  });
+        await fetch("/deleteLabel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: labelToDelete._id })
+      });
 
-  const updated = labels.filter((_, i) => i !== index);
-  setLabels(updated);
-};
+      setLabels(prev => prev.filter((_, i) => i !== index));
+
+      // 🔥 refresh notes after label deletion
+      refetchNotes();
+ };
 
   // Edit label
   const editLabel = async (index, value) => {
-  const label = labels[index];
+    const label = labels[index];
 
-  const updated = [...labels];
-  updated[index] = { ...label, name: value };
-  setLabels(updated);
+    setLabels(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], name: value };
+      return updated;
+    });
 
-  await fetch("/updateLabel", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      id: label._id,
-      name: value
-    })
-  });
-  refreshLabels();
-};
+    await fetch("/updateLabel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: label._id,
+        name: value
+      })
+    });
+  };
 
   const addLabel = async () => {
-  if (newLabel.trim() === "") return;
+  if (!newLabel.trim()) return;
 
   const res = await fetch("/addLabel", {
     method: "POST",
@@ -67,7 +64,7 @@ function EditLabelsDialog({ open, handleClose, labels, setLabels }) {
 
   setLabels(prev => [...prev, savedLabel]);
   setNewLabel("");
-  refreshLabels();
+  
 };
 
   return (
@@ -89,8 +86,9 @@ function EditLabelsDialog({ open, handleClose, labels, setLabels }) {
           {(labels || []).map((label, index) => (
             <ListItem key={label._id || index}>
                 <TextField
-                    value={label.name || label}
+                    value={label.name}
                     onChange={(e) => editLabel(index, e.target.value)}
+                    
                 />
                 <IconButton onClick={() => deleteLabel(index)}>
                     <DeleteIcon />

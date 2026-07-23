@@ -26,6 +26,8 @@ function DrawerItem({ icon, text, open , action}) {
           px: 2
         }}
       >
+        
+
         {icon}
         {open && <ListItemText primary={text} sx={{ ml: 2 }} />}
       </ListItemButton>
@@ -35,3 +37,4 @@ function DrawerItem({ icon, text, open , action}) {
 };
 
 export default DrawerItem;
+

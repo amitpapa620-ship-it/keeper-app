@@ -1,25 +1,160 @@
 import React from "react";
-import DeleteIcon from '@mui/icons-material/Delete';
-function Note(props) {
+import DeleteIcon from "@mui/icons-material/Delete";
+import ArchiveIcon from "@mui/icons-material/Archive";
+import RestoreFromTrashIcon from "@mui/icons-material/RestoreFromTrash";
+import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+import UnarchiveIcon from "@mui/icons-material/Unarchive";
+import PushPinIcon from "@mui/icons-material/PushPin";
+import EditIcon from "@mui/icons-material/Edit";
+import SaveIcon from "@mui/icons-material/Save";
+import CloseIcon from "@mui/icons-material/Close";
 
-    function handleClick() {
-        props.onDelete(props.id);
-    }
+function Note(props) {
+  const [isEditing, setIsEditing] = React.useState(false);
+
+  const [editData, setEditData] = React.useState({
+    title: props.title,
+    content: props.content,
+    reminder: props.reminder || ""
+  });
+
+  function handleChange(e) {
+    const { name, value } = e.target;
+
+    setEditData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  }
+
+  async function saveEdit() {
+  if (!editData.title.trim() || !editData.content.trim()) {
+    alert("Title and content cannot be empty");
+    return;
+  }
+
+  const success = await props.onEdit(props.id, editData);
+
+  if (success) {
+    setIsEditing(false);
+  }
+}
+
+  function cancelEdit() {
+    setEditData({
+      title: props.title,
+      content: props.content,
+      reminder: props.reminder || ""
+    });
+
+    setIsEditing(false);
+  }
+
   return (
     <div className="note">
-      <h1>{props.title}</h1>
-      <p>{props.content}</p>
+      {isEditing ? (
+        <>
+          <input
+            name="title"
+            value={editData.title}
+            onChange={handleChange}
+            className="edit-note-title"
+          />
 
-      {props.reminder && (
-        <p style={{ fontSize: "12px", color: "gray" }}>
-          ⏰ {new Date(props.reminder).toLocaleString()}
-        </p>
+          <textarea
+            name="content"
+            value={editData.content}
+            onChange={handleChange}
+            className="edit-note-content"
+          />
+
+          <input
+            name="reminder"
+            type="datetime-local"
+            value={editData.reminder ? editData.reminder.slice(0, 16) : ""}
+            onChange={handleChange}
+            className="edit-note-reminder"
+          />
+
+          <button  type ="button" onClick={saveEdit}>
+            <SaveIcon />
+          </button>
+
+          <button onClick={cancelEdit}>
+            <CloseIcon />
+          </button>
+        </>
+      ) : (
+        <>
+          <h1>
+            <span>{props.title}</span>
+          </h1>
+
+          <p>{props.content}</p>
+
+          {props.reminder && (
+            <p style={{ fontSize: "12px", color: "gray" }}>
+              ⏰ {new Date(props.reminder).toLocaleString()}
+            </p>
+          )}
+
+          {props.labels?.length > 0 && (
+            <div>
+              {props.labels.map(label => (
+                <span
+                  key={label._id}
+                  className="border rounded-full"
+                  style={{ padding: "5px" }}
+                >
+                  {label.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {props.activeType !== "Trash" && props.activeType !== "Archive" && (
+            <button onClick={() => setIsEditing(true)}>
+              <EditIcon  />
+            </button>
+          )}
+
+          {props.activeType === "Trash" ? (
+            <>
+              <button onClick={() => props.onRestore(props.id)}>
+                <RestoreFromTrashIcon />
+              </button>
+
+              <button onClick={() => props.onPermanentDelete(props.id)}>
+                <DeleteForeverIcon />
+              </button>
+            </>
+          ) : props.activeType === "Archive" ? (
+            <>
+              <button onClick={() => props.onRestore(props.id)}>
+                <UnarchiveIcon />
+              </button>
+
+              <button onClick={() => props.onDelete(props.id)}>
+                <DeleteIcon />
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => props.onPin(props.id, props.isPinned)}>
+                <PushPinIcon color={props.isPinned ? "warning" : "inherit"} />
+              </button>
+
+              <button onClick={() => props.onArchive(props.id)}>
+                <ArchiveIcon />
+              </button>
+
+              <button onClick={() => props.onDelete(props.id)}>
+                <DeleteIcon />
+              </button>
+            </>
+          )}
+        </>
       )}
-
-      <button onClick={handleClick}>
-        <DeleteIcon />
-      </button>
-
     </div>
   );
 }

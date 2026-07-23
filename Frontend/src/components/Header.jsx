@@ -1,17 +1,4 @@
-// import React from "react";
-// import HighlightIcon from '@mui/icons-material/Highlight';
-// import MenuIcon from '@mui/icons-material/Menu';
 
-// function Header() {
-//   return (
-//     <header>
-//       <h1> <MenuIcon /> <HighlightIcon /> 
-//       Keeper</h1>
-//     </header>
-//   );
-// }
-
-// export default Header;
 
 import React from "react";
 import DrawerItem from "./DrawerItem";
@@ -24,6 +11,8 @@ import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LogoutIcon from '@mui/icons-material/Logout';
+import SearchIcon from '@mui/icons-material/Search';
 
 import {
   Drawer,
@@ -32,11 +21,37 @@ import {
   
 } from "@mui/material";
 
-function Header({ active, setActive }) {
+function Header({ active,
+  setActive,
+  refetchNotes,
+  searchText,
+  setSearchText,
+  sortType,
+  setSortType }) {
+
+
+  
+  
+
+  const handleLogout = async () => {
+    await fetch("/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    //broadcastChannel
+     const bc = new BroadcastChannel("auth");
+    bc.postMessage("logout");
+
+    //  also clear immediately
+    window.location.href = "/login";
+   
+    
+  };
   const [open, setOpen] = React.useState(false);
 
   const [openLabels, setOpenLabels] = React.useState(false);
   const [labels, setLabels] = React.useState([]);
+  const [mobileSearchOpen, setMobileSearchOpen] = React.useState(false);
 
   const fetchLabels = () => {
     fetch("/labels")
@@ -63,31 +78,103 @@ function Header({ active, setActive }) {
   
 
   const mainItems = [
-    { icon: <LightbulbIcon />, text: "Notes", action: () => setActive("Notes") },
-    { icon: <NotificationsActiveIcon />, text: "Reminders", action: () => setActive("Reminders") },
+    { icon: <LightbulbIcon />, text: "Notes", action: () => setActive({ type: "Notes", value: null }) },
+    { icon: <NotificationsActiveIcon />, text: "Reminders", action: () => setActive({ type: "Reminders", value: null }) },
     
   ];
   const bottomItems = [
     { icon: <EditIcon />, text: "Edit labels", action: () => setOpenLabels(true) },
-    { icon: <ArchiveIcon />, text: "Archive", action: () => setActive("Archive") },
-    { icon: <DeleteIcon />, text: "Trash", action: () => setActive("Trash") }
+    { icon: <ArchiveIcon />, text: "Archive", action: () => setActive({ type: "Archive", value: null }) },
+    { icon: <DeleteIcon />, text: "Trash", action: () => setActive({ type: "Trash", value: null }) },
   ];
 
   return (
     <>
-      <header style={{ display: "flex", alignItems: "center", padding: "10px" }}>
+      <header className="flex items-center p-2 justify-between">
+        <div className="flex items-center gap-4">
+
         <IconButton onClick={() => setOpen(!open)}>
           <MenuIcon />
         </IconButton>
 
-        <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <h1 className="flex items-center gap-4"  >
           <HighlightIcon />
-          Keeper
+          <span className="text-3xl">Keeper</span>
         </h1>
+        </div>
+    <IconButton
+  className="mobile-search-icon"
+  onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+>
+  <SearchIcon />
+</IconButton>
+        {/* Search + Sort */}
+  <div className={`header-tools flex items-center gap-6 ${mobileSearchOpen ? "mobile-search-open" : ""}`}>
+    <div className="
+      flex 
+      items-center
+      
+      w-40
+      sm:w-56
+      md:w-72
+      lg:w-120
+      h-11
+      
+      rounded-full
+      bg-[#ffd84d]
+      shadow-md
+      transition-all
+      duration-200
+      focus-within:bg-white
+      focus-within:shadow-lg
+    ">
+    
+  <div className= "flex items-center justify-center w-15"><SearchIcon className= " text-gray-600  " /></div>
+
+    
+    <input
+      type="text"
+      placeholder="Search notes..."
+      value={searchText}
+      onChange={(e) => setSearchText(e.target.value)}
+      className="flex
+        w-full
+        h-full
+        bg-transparent
+        outline-none
+        text-gray-700
+        placeholder:text-gray-500"
+    />
+    </div>
+    
+      <div className="p-4 h-11 w-30 md:w-25 sm:w-20 flex items-center justify-center rounded-full bg-[#ffd84d] shadow-md transition-all duration-200 hover:shadow-lg">
+        <select
+      value={sortType}
+      onChange={(e) => setSortType(e.target.value)}
+      className="outline-none w-20 md:w-15 sm:w-10 bg-transparent text-gray-700 placeholder:text-gray-500"
+      
+    >
+      <option value="" disabled>
+        Filter
+      </option>
+      <option value="priority">Priority</option>
+      <option value="newest">Newest</option>
+      <option value="oldest">Oldest</option>
+      <option value="titleAZ">Title A-Z</option>
+      <option value="titleZA">Title Z-A</option>
+      <option value="reminder">Reminder Time</option>
+    </select>
+      </div>
+  </div>
+
+        <IconButton onClick={handleLogout}>
+          <LogoutIcon />
+        </IconButton>
+
       </header>
 
       {/* Sliding Drawer */}
-      <Drawer
+      {/* <Drawer
         variant="permanent"
         onMouseEnter={() => toggleDrawer(true)}
         onMouseLeave={() => toggleDrawer(false)}
@@ -99,6 +186,18 @@ function Header({ active, setActive }) {
             transition: "0.3s",
             overflowX: "hidden",
             top: "60px", 
+            height: "calc(100% - 60px)"
+          }
+        }}
+      > */}
+      <Drawer
+        variant="temporary"
+        open={open}
+        onClose={() => setOpen(false)}
+        sx={{
+          "& .MuiDrawer-paper": {
+            width: 240,
+            top: "60px",
             height: "calc(100% - 60px)"
           }
         }}
@@ -138,17 +237,17 @@ function Header({ active, setActive }) {
               text={item.text}
               open={open}
               action={item.action}
+              
             />
           ))}
         </List>
       </Drawer>
               <EditLabelsDialog
-                
-                open={openLabels}
-                handleClose={() => setOpenLabels(false)}
-                labels={labels}
-                setLabels={setLabels}
-                refetchLabels={fetchLabels}
+                  open={openLabels}
+                  handleClose={() => setOpenLabels(false)}
+                  labels={labels}
+                  setLabels={setLabels}
+                  refetchNotes={refetchNotes}
               />
     </>
   );
