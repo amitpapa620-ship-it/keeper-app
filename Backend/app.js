@@ -51,27 +51,38 @@ const transporter = nodemailer.createTransport({
 function generateOtp() {
   return crypto.randomInt(100000, 1000000).toString();
 }
-
+const OTP_SALT = process.env.OTP_SALT || "keeper-otp-secret";
 function hashOtp(otp) {
   return crypto
     .createHash("sha256")
-    .update(otp+salt)
+    .update(otp+ OTP_SALT) // otp + salt for strong hash function.
     .digest("hex");
 }
 
 async function sendOtpEmail(email, otp) {
-  await transporter.sendMail({
-    from: `"Street Book Seller" <${process.env.SMTP_USER}>`,
-    to: email,
-    subject: "Verify your email",
-    text: `Your OTP is ${otp}. It expires in 10 minutes.`,
-    html: `
-      <h2>Email Verification</h2>
-      <p>Your OTP is:</p>
-      <h1>${otp}</h1>
-      <p>This OTP expires in 10 minutes.</p>
-    `
-  });
+  try {
+    const info = await transporter.sendMail({
+      from: `"Keeper App" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: "Verify your email",
+      text: `Your OTP is ${otp}. It expires in 10 minutes.`,
+      html: `
+        <h2>Email Verification</h2>
+        <p>Your OTP is:</p>
+        <h1>${otp}</h1>
+        <p>This OTP expires in 10 minutes.</p>
+      `
+    });
+
+    console.log("OTP email sent:", info.messageId);
+    return info;
+  } catch (error) {
+    console.error("OTP email sending failed");
+    console.error("Code:", error.code);
+    console.error("Message:", error.message);
+    console.error("Response:", error.response);
+    throw error;
+  }
 }
 
 
@@ -152,7 +163,7 @@ passport.deserializeUser(async (id, cb) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/auth/google/secrets"
+    callbackURL: process.env.GOOGLE_CALLBACK_URL||"http://localhost:3000/auth/google/secrets"
   },
   async (accessToken, refreshToken, profile, cb) => {
     try {
@@ -556,37 +567,6 @@ app.post("/updateLabel", async (req, res) => {
     }
 });
 
-// app.post("/register", async (req, res) => {
-    
-//     try {
-        
-
-//         const user = await User.register(
-//             { username: req.body.username },
-//             req.body.password
-//         );
-
-//         req.login(user, (err) => {
-//             if (err) {
-//                 console.error(err);
-//                 return res.redirect("/login");
-//             }
-
-//             req.user._id = user._id;
-
-//             req.session.save(() => {
-//                 console.log("✅ Registered + logged in");
-//                 res.redirect("/secrets");
-//             });
-//         });
-
-        
-        
-//     } catch (err) {
-//         console.error("Error during registration:", err);
-//         res.redirect("/register");
-//     }
-// });
 
 app.post("/verify-otp", async (req, res, next) => {
   try {
