@@ -6,10 +6,13 @@ import mongoose from "mongoose";
 import path from "path";
 import session from "express-session";
 import passport from "passport";
-import passportLocalMongoose from "passport-local-mongoose";
+
 import MongoStore from "connect-mongo";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import findOrCreate from "mongoose-findorcreate";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const passportLocalMongoose = require("passport-local-mongoose");
+const findOrCreate = require("mongoose-findorcreate");
 import dotenv from "dotenv";
 dotenv.config();
 import Groq from "groq-sdk";
@@ -166,8 +169,8 @@ const userSchema = new mongoose.Schema({
     
 });
 
-userSchema.plugin(passportLocalMongoose.default);//this plugin use for authenication by passport.js
-userSchema.plugin(findOrCreate);// help to find id in google sign in or sign up.
+userSchema.plugin(passportLocalMongoose.default || passportLocalMongoose);//this plugin use for authenication by passport.js
+userSchema.plugin(findOrCreate.default || findOrCreate);// help to find id in google sign in or sign up.
 const User = mongoose.model("User", userSchema);
 
 passport.use(User.createStrategy());
