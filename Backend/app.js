@@ -76,10 +76,16 @@ function hashOtp(otp) {
 // Updated OTP Email function using Resend API first
 async function sendOtpEmail(email, otp) {
   try {
-    // If Resend API Key is available, use Resend HTTP API (bypasses Render SMTP port blocking)
-    if (process.env.RESEND_API_KEY) {
-      const data = await resend.emails.send({
-        from: 'Keeper App <onboarding@resend.dev>', // Default testing address for Resend
+    const rawApiKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : null;
+
+    if (rawApiKey) {
+      // Debug log to verify key format in Render logs (safe: only logs first 5 chars)
+      console.log(`[Resend Debug] Key detected. Starts with: "${rawApiKey.slice(0, 5)}...", Length: ${rawApiKey.length}`);
+
+      const resendClient = new Resend(rawApiKey);
+
+      const { data, error } = await resendClient.emails.send({
+        from: 'Keeper App <onboarding@resend.dev>',
         to: email,
         subject: 'Verify your email - Keeper App',
         html: `
@@ -89,7 +95,13 @@ async function sendOtpEmail(email, otp) {
           <p>This OTP expires in 10 minutes.</p>
         `
       });
-      console.log("OTP email sent via Resend API:", data);
+
+      if (error) {
+        console.error("Resend API returned error:", error);
+        throw new Error(`Resend Error: ${error.message}`);
+      }
+
+      console.log("OTP email sent successfully via Resend API:", data);
       return data;
     }
 
@@ -114,7 +126,6 @@ async function sendOtpEmail(email, otp) {
     throw error;
   }
 }
-
 
 app.use(passport.initialize());// it is use to initialize the passport.
 app.use(passport.session());// it attached the session with passport.
