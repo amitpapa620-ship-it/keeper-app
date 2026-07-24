@@ -14,6 +14,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import Groq from "groq-sdk";
 import nodemailer from "nodemailer";
+import { Resend } from 'resend';
 import crypto from "crypto";
 
 
@@ -40,6 +41,8 @@ app.use(session({
   }
 }));
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
@@ -50,13 +53,11 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS
   }
 });
-transporter.verify()
-  .then(() => {
-    console.log("SMTP server is ready");
-  })
-  .catch((error) => {
-    console.error("SMTP connection failed:", error);
-  });
+if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+  transporter.verify()
+    .then(() => console.log("SMTP server is ready"))
+    .catch((error) => console.log("SMTP verification skipped/failed (using Resend fallback)"));
+}
 
 function generateOtp() {
   return crypto.randomInt(100000, 1000000).toString();
@@ -69,8 +70,27 @@ function hashOtp(otp) {
     .digest("hex");
 }
 
+// Updated OTP Email function using Resend API first
 async function sendOtpEmail(email, otp) {
   try {
+    // If Resend API Key is available, use Resend HTTP API (bypasses Render SMTP port blocking)
+    if (process.env.RESEND_API_KEY) {
+      const data = await resend.emails.send({
+        from: 'Keeper App <onboarding@resend.dev>', // Default testing address for Resend
+        to: email,
+        subject: 'Verify your email - Keeper App',
+        html: `
+          <h2>Email Verification</h2>
+          <p>Your OTP is:</p>
+          <h1>${otp}</h1>
+          <p>This OTP expires in 10 minutes.</p>
+        `
+      });
+      console.log("OTP email sent via Resend API:", data);
+      return data;
+    }
+
+    // Fallback: Nodemailer for local development
     const info = await transporter.sendMail({
       from: `"Keeper App" <${process.env.SMTP_USER}>`,
       to: email,
@@ -84,13 +104,10 @@ async function sendOtpEmail(email, otp) {
       `
     });
 
-    console.log("OTP email sent:", info.messageId);
+    console.log("OTP email sent via Nodemailer:", info.messageId);
     return info;
   } catch (error) {
-    console.error("OTP email sending failed");
-    console.error("Code:", error.code);
-    console.error("Message:", error.message);
-    console.error("Response:", error.response);
+    console.error("OTP email sending failed:", error);
     throw error;
   }
 }
@@ -189,7 +206,8 @@ passport.use(new GoogleStrategy({
       if (!user) {
         user = await User.create({
           googleId: profile.id,
-          email: email
+          email: email,
+          username: email
         });
       } else if (!user.googleId) {
         // link existing account
