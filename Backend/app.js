@@ -73,60 +73,74 @@ function hashOtp(otp) {
     .digest("hex");
 }
 
-// Updated OTP Email function using Resend API first
 async function sendOtpEmail(email, otp) {
-  try {
-    const rawApiKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : null;
+  const subject = 'Verify your email - Keeper App';
+  const htmlBody = `
+    <h2>Email Verification</h2>
+    <p>Your OTP is:</p>
+    <h1>${otp}</h1>
+    <p>This OTP expires in 10 minutes.</p>
+  `;
 
-    if (rawApiKey) {
-      // Debug log to verify key format in Render logs (safe: only logs first 5 chars)
-      console.log(`[Resend Debug] Key detected. Starts with: "${rawApiKey.slice(0, 5)}...", Length: ${rawApiKey.length}`);
-
-      const resendClient = new Resend(rawApiKey);
-
+  // 1. First Attempt: Resend API (Best for Production)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      console.log(`Attempting to send OTP to ${email} via Resend...`);
+      const resendClient = new Resend(process.env.RESEND_API_KEY.trim());
       const { data, error } = await resendClient.emails.send({
         from: 'Keeper App <onboarding@resend.dev>',
         to: email,
-        subject: 'Verify your email - Keeper App',
-        html: `
-          <h2>Email Verification</h2>
-          <p>Your OTP is:</p>
-          <h1>${otp}</h1>
-          <p>This OTP expires in 10 minutes.</p>
-        `
+        subject: subject,
+        html: htmlBody
       });
 
-      if (error) {
-        console.error("Resend API returned error:", error);
-        throw new Error(`Resend Error: ${error.message}`);
-      }
-
-      console.log("OTP email sent successfully via Resend API:", data);
+      if (error) throw new Error(error.message);
+      
+      console.log("Success: OTP sent via Resend!");
       return data;
+    } catch (error) {
+      console.log(`Resend failed: ${error.message}. Falling back to next method...`);
     }
-
-    // Fallback: Nodemailer for local development
-    const info = await transporter.sendMail({
-      from: `"Keeper App" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: "Verify your email",
-      text: `Your OTP is ${otp}. It expires in 10 minutes.`,
-      html: `
-        <h2>Email Verification</h2>
-        <p>Your OTP is:</p>
-        <h1>${otp}</h1>
-        <p>This OTP expires in 10 minutes.</p>
-      `
-    });
-
-    console.log("OTP email sent via Nodemailer:", info.messageId);
-    return info;
-  } catch (error) {
-    console.error("OTP email sending failed:", error);
-    throw error;
   }
-}
 
+  // 2. Second Attempt: Google Apps Script (Best for Free/Render testing)
+  if (process.env.GOOGLE_SCRIPT_URL) {
+    try {
+      console.log(`Attempting to send OTP to ${email} via Google Apps Script...`);
+      const response = await fetch(process.env.GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ to: email, subject: subject, html: htmlBody })
+      });
+      
+      console.log("Success: OTP sent via Google Script!");
+      return true;
+    } catch (error) {
+      console.log(`Google Script failed: ${error.message}. Falling back to Nodemailer...`);
+    }
+  }
+
+  // 3. Final Fallback: Nodemailer (Best for local development)
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    try {
+      console.log(`Attempting to send OTP to ${email} via Nodemailer...`);
+      const info = await transporter.sendMail({
+        from: `"Keeper App" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: subject,
+        html: htmlBody
+      });
+      
+      console.log("Success: OTP sent via Nodemailer!");
+      return info;
+    } catch (error) {
+      console.error(`Nodemailer failed: ${error.message}`);
+      // If we reach this point, all three methods have failed
+      throw new Error("All email sending methods failed.");
+    }
+  }
+
+  throw new Error("No email service configured. Please check your environment variables.");
+}
 app.use(passport.initialize());// it is use to initialize the passport.
 app.use(passport.session());// it attached the session with passport.
 
