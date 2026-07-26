@@ -103,13 +103,16 @@ async function sendOtpEmail(email, otp) {
     }
   }
 
-  // 2. Second Attempt: Google Apps Script (Best for Free/Render testing)
   if (process.env.GOOGLE_SCRIPT_URL) {
     try {
       console.log(`Attempting to send OTP to ${email} via Google Apps Script...`);
       const response = await fetch(process.env.GOOGLE_SCRIPT_URL, {
         method: "POST",
-        body: JSON.stringify({ to: email, subject: subject, html: htmlBody })
+        headers: {
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({ to: email, subject: subject, html: htmlBody }),
+        redirect: "follow" 
       });
       
       console.log("Success: OTP sent via Google Script!");
