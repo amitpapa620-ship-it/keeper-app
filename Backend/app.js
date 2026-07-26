@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import path from "path";
 import session from "express-session";
 import passport from "passport";
-
+import cron from "node-cron";
 import MongoStore from "connect-mongo";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { createRequire } from "module";
@@ -144,6 +144,69 @@ async function sendOtpEmail(email, otp) {
 
   throw new Error("No email service configured. Please check your environment variables.");
 }
+
+async function sendReminderEmail(email, noteTitle, noteContent) {
+  const subject = `⏰ Reminder: ${noteTitle || "Keeper Note"}`;
+  const htmlBody = `
+    <h2>Your Scheduled Keeper Reminder</h2>
+    <p><strong>Note Title:</strong> ${noteTitle || "Untitled"}</p>
+    <div style="padding: 12px; background-color: #f4f4f4; border-left: 4px solid #fbbc04;">
+      <p>${noteContent || "No content"}</p>
+    </div>
+    <p style="margin-top: 20px;">This is an automated reminder from your Keeper App.</p>
+  `;
+
+  // 1. Resend API
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const resendClient = new Resend(process.env.RESEND_API_KEY.trim());
+      await resendClient.emails.send({
+        from: 'Keeper App <onboarding@resend.dev>',
+        to: email,
+        subject: subject,
+        html: htmlBody
+      });
+      return true;
+    } catch (err) {
+      console.log(`Reminder via Resend failed: ${err.message}`);
+    }
+  }
+
+  // 2. Google Apps Script Fallback
+  if (process.env.GOOGLE_SCRIPT_URL) {
+    try {
+      await fetch(process.env.GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: email, subject: subject, html: htmlBody }),
+        redirect: "follow"
+      });
+      return true;
+    } catch (err) {
+      console.log(`Reminder via Google Script failed: ${err.message}`);
+    }
+  }
+
+  // 3. Nodemailer Fallback
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    try {
+      await transporter.sendMail({
+        from: `"Keeper App" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: subject,
+        html: htmlBody
+      });
+      return true;
+    } catch (err) {
+      console.error(`Reminder via Nodemailer failed: ${err.message}`);
+    }
+  }
+}
+
+
+
+
+
 app.use(passport.initialize());// it is use to initialize the passport.
 app.use(passport.session());// it attached the session with passport.
 
@@ -159,6 +222,7 @@ const noteSchema = new mongoose.Schema({
   title: String,
   content: String,
   reminder: Date,
+  reminderSent: { type: Boolean, default: false },
   //adding open ai schema in noteschema summary, ailabels, priority.
   summary: String,
   aiLabels: [String],
@@ -427,7 +491,7 @@ app.post("/updateNote", async (req, res) => {
 
     const updatedNote = await Note.findOneAndUpdate(
       { _id: id, userId: req.user._id },
-      { title, content, reminder: reminder || null },
+      { title, content, reminder: reminder || null,reminderSent: false },
       { new: true }
     ).populate("labels");
 
@@ -848,7 +912,35 @@ app.post("/logout", (req, res, next) => {
 });
 
     
+// Runs every minute (* * * * *)
+cron.schedule("* * * * *", async () => {
+  try {
+    const now = new Date();
 
+    // Find notes with a reminder due that hasn't been sent yet
+    const dueNotes = await Note.find({
+      reminder: { $lte: now },
+      reminderSent: { $ne: true },
+      isDeleted: false
+    }).populate("userId");
+
+    for (const note of dueNotes) {
+      const userEmail = note.userId?.email || note.userId?.username;
+
+      if (userEmail) {
+        console.log(`Sending reminder for "${note.title}" to ${userEmail}...`);
+        await sendReminderEmail(userEmail, note.title, note.content);
+
+        // Mark as sent so it doesn't trigger again
+        note.reminderSent = true;
+        await note.save();
+        console.log(`✅ Reminder sent and marked for note: ${note._id}`);
+      }
+    }
+  } catch (error) {
+    console.error("Error in reminder cron job:", error);
+  }
+});
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
