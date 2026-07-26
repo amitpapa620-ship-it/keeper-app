@@ -9,13 +9,23 @@ import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
 
+
+
+function formatForInput(mongoDateString) {
+  if (!mongoDateString) return "";
+  const date = new Date(mongoDateString);
+  const localOffset = date.getTimezoneOffset() * 60000;
+  const localTime = new Date(date.getTime() - localOffset);
+  return localTime.toISOString().slice(0, 16);
+}
+
 function Note(props) {
   const [isEditing, setIsEditing] = React.useState(false);
 
   const [editData, setEditData] = React.useState({
     title: props.title,
     content: props.content,
-    reminder: props.reminder || ""
+    reminder: formatForInput(props.reminder)|| ""
   });
 
   function handleChange(e) {
@@ -33,18 +43,26 @@ function Note(props) {
     return;
   }
 
-  const success = await props.onEdit(props.id, editData);
+    let finalReminder = editData.reminder;
+    if (editData.reminder) {
+      finalReminder = new Date(editData.reminder).toISOString();
+    }
 
-  if (success) {
-    setIsEditing(false);
-  }
+    const success = await props.onEdit(props.id, {
+      ...editData,
+      reminder: finalReminder
+    });
+
+    if (success) {
+      setIsEditing(false);
+    }
 }
 
   function cancelEdit() {
     setEditData({
       title: props.title,
       content: props.content,
-      reminder: props.reminder || ""
+      reminder: formatForInput(props.reminder) || ""
     });
 
     setIsEditing(false);
@@ -71,7 +89,7 @@ function Note(props) {
           <input
             name="reminder"
             type="datetime-local"
-            value={editData.reminder ? editData.reminder.slice(0, 16) : ""}
+            value={editData.reminder}
             onChange={handleChange}
             className="edit-note-reminder"
           />

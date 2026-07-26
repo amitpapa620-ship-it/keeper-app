@@ -69,11 +69,14 @@ const [note, setNote] = React.useState({
         if(note.title.trim() === "" || note.content.trim() === "") {
             return;
         }
-
+        let formattedReminder = null;
+        if (note.reminder) {
+            formattedReminder = new Date(note.reminder).toISOString();
+        }
         const noteToAdd = {
                 title: note.title,
                 content: note.content,
-                reminder: note.reminder,
+                reminder: formattedReminder,
                 summary: note.summary,
                 aiLabels: note.aiLabels,
                 priority: note.priority,
@@ -93,7 +96,7 @@ const [note, setNote] = React.useState({
 
             // optional: keep instant UI update
             
-            // 🔥 IMPORTANT: sync with DB (fixes label issue instantly)
+            // IMPORTANT: sync with DB (fixes label issue instantly)
             setTimeout(() => {
                 props.refetchNotes();
             }, 100);
@@ -102,7 +105,10 @@ const [note, setNote] = React.useState({
                 title: "",
                 content: "",
                 reminder: "",
-                labelIds: []
+                labelIds: [],
+                summary: "",
+                aiLabels: [],
+                priority: "normal"
             });
         })
         
